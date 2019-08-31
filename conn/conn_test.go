@@ -1,16 +1,32 @@
 package conn
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
 
-func TestConnect(t *testing.T) {
-	t.Run("TestConnect", func(t *testing.T) {
-		Connect()
-	})
+func TestConnectBasic(t *testing.T) {
+	opts := NewClientOptions(ClientOptions{})
+	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667, opts)
+	if err != nil {
+		t.Error(err)
+	}
+	if cl == nil {
+		t.Error("returned conn.Client is nil")
+	}
 }
 
-func TestDisconnect(t *testing.T) {
-	cl := Connect()
-	t.Run("TestDisconnect", func(t *testing.T) {
-		cl.Disconnect()
-	})
+func TestDisconnectBasic(t *testing.T) {
+	opts := NewClientOptions(ClientOptions{})
+	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667, opts)
+	if err != nil {
+		t.Error(err)
+	}
+	if cl == nil {
+		t.Error("returned conn.Client is nil")
+	}
+	err = cl.Disconnect()
+	if err != nil {
+		t.Error(err)
+	}
 }
