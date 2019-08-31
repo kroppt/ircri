@@ -37,14 +37,14 @@ func Connect(ip net.IP, port int) (*Client, error) {
 		return nil, errors.Wrap(err, "TCPConn.Read failed")
 	}
 	fmt.Printf("Read message: '%s'.\n", resp)
-	err = conn.Close()
-	if err != nil {
-		return nil, errors.Wrap(err, "TCPConn.Close failed")
-	}
 	return &Client{conn}, nil
 }
 
 // Disconnect a client from its connected server
-func (cl *Client) Disconnect() {
-	panic("not implemented")
+func (cl *Client) Disconnect() error {
+	err := cl.tcp.Close()
+	if err != nil {
+		return errors.Wrap(err, "TCPConn.Close failed")
+	}
+	return nil
 }
