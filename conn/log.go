@@ -12,3 +12,11 @@ type ChannelLogger chan string
 func (cl ChannelLogger) Log(msg string) {
 	cl <- msg
 }
+
+// NoopLogger does nothing with messages that get logged
+type NoopLogger struct {
+}
+
+// Log does nothing
+func (nl NoopLogger) Log(msg string) {
+}

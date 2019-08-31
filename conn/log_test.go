@@ -12,3 +12,8 @@ func TestChannelLoggerBasic(t *testing.T) {
 		t.Errorf("Expected logged message '%s', but got '%s'", msg, recvmsg)
 	}
 }
+
+func TestNoopLoggerBasic(t *testing.T) {
+	nl := NoopLogger{}
+	nl.Log("Test log message")
+}
