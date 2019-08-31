@@ -6,7 +6,8 @@ import (
 )
 
 func TestConnectBasic(t *testing.T) {
-	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667)
+	opts := NewClientOptions(ClientOptions{})
+	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667, opts)
 	if err != nil {
 		t.Error(err)
 	}
@@ -16,7 +17,8 @@ func TestConnectBasic(t *testing.T) {
 }
 
 func TestDisconnectBasic(t *testing.T) {
-	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667)
+	opts := NewClientOptions(ClientOptions{})
+	cl, err := Connect(net.IPv4(91, 236, 182, 1), 6667, opts)
 	if err != nil {
 		t.Error(err)
 	}
