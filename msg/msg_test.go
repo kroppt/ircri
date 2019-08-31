@@ -45,7 +45,7 @@ func TestEncode(t *testing.T) {
 func TestDecode(t *testing.T) {
 	t.Run("Test decode client version command", func(t *testing.T) {
 		message := "\001VERSION\001"
-		expected := []Encoder{CTCP("VERSION")}
+		expected := []Valuer{CTCP("VERSION")}
 		values, err := Decode(message)
 		if err != nil {
 			t.Error(err)
@@ -54,7 +54,7 @@ func TestDecode(t *testing.T) {
 			t.Fail()
 		}
 		for i, exp := range expected {
-			if values[i] != exp {
+			if values[i].Value() != exp.Value() {
 				t.Fail()
 			}
 		}

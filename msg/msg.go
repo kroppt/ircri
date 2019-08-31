@@ -39,6 +39,6 @@ func (c CTCP) Value() string {
 }
 
 // Decode turns the input message from a CTCP escaped message into plain text.
-func Decode(string) ([]Encoder, error) {
+func Decode(string) ([]Valuer, error) {
 	return nil, errors.New("not implemented")
 }
