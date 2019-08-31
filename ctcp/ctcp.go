@@ -2,10 +2,11 @@ package ctcp
 
 import "errors"
 
-// Message contains text along with the text's type
+// Message contains text, the text's type, and the next part of the message, if there is one
 type Message struct {
-	value    string
-	textType TextType
+	value       string
+	textType    TextType
+	nextMessage *Message
 }
 
 // TextType is used to specify whether an input is literal text or CTCP text
@@ -18,17 +19,12 @@ const (
 	CTCP
 )
 
-// EncodeMessage turns the input string into a valid CTCP escaped message.
+// EncodeMessage turns the input message into a valid CTCP escaped message.
 func EncodeMessage(message Message) (Message, error) {
-	return Message{"", PLAIN}, errors.New("not implemented")
+	return Message{"", PLAIN, nil}, errors.New("not implemented")
 }
 
-// EncodeChainMessage turns the input string into a valid CTCP escaped message.
-func EncodeChainMessage(preMessage Message, postMessage Message) (Message, error) {
-	return Message{"", PLAIN}, errors.New("not implemented")
-}
-
-// DecodeMessage turns the input string from a CTCP escaped message into plain text.
+// DecodeMessage turns the input message from a CTCP escaped message into plain text.
 func DecodeMessage(message Message) (Message, error) {
-	return Message{"", PLAIN}, errors.New("not implemented")
+	return Message{"", PLAIN, nil}, errors.New("not implemented")
 }
