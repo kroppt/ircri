@@ -1,5 +1,7 @@
 package msg
 
+import "errors"
+
 const (
 	mQuote = '\020'
 	xQuote = '\134'
@@ -46,6 +48,9 @@ func (p Plain) Encode() (string, error) {
 func (c CTCP) Encode() (string, error) {
 	// escape CTCP characters
 	val := c.Value()
+	if len(val) > 0 && isWhitespace(val[0]) {
+		return "", errors.New("expected valid character at position 0")
+	}
 	encoded := ""
 	for _, char := range val {
 		encoded += escapeXChar(byte(char))
@@ -164,5 +169,16 @@ func unescapeXChar(char byte) string {
 		return string(xQuote)
 	default:
 		return ""
+	}
+}
+
+func isWhitespace(char byte) bool {
+	switch char {
+	case '\001':
+		return true
+	case '\040':
+		return true
+	default:
+		return false
 	}
 }
