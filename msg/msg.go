@@ -9,6 +9,7 @@ const (
 	nl     = '\n'
 	cr     = '\r'
 	xDelim = '\001'
+	space  = '\040'
 )
 
 // Encoder has an Encode function which allows it to be converted into a string.
@@ -174,9 +175,9 @@ func unescapeXChar(char byte) string {
 
 func isWhitespace(char byte) bool {
 	switch char {
-	case '\001':
+	case xDelim:
 		return true
-	case '\040':
+	case space:
 		return true
 	default:
 		return false
