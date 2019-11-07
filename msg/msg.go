@@ -75,7 +75,7 @@ func (c CTCP) Value() string {
 	return string(c)
 }
 
-// Decode turns the input message from a CTCP escaped message into plain text.
+// Decode turns a CTCP escaped string message into a slice of the components of the message.
 func Decode(message string) ([]Valuer, error) {
 	decoded := ""
 	results := []Valuer{}
