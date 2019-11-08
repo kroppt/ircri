@@ -9,9 +9,10 @@ func TestEncode(t *testing.T) {
 		value, err := message.Encode()
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if value != expected {
-			t.Fail()
+			t.Error("For", message, "expected", expected, "got", value)
 		}
 	})
 	t.Run("Test encode newline escaping", func(t *testing.T) {
@@ -20,9 +21,10 @@ func TestEncode(t *testing.T) {
 		value, err := message.Encode()
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if value != expected {
-			t.Fail()
+			t.Error("For", message, "expected", expected, "got", value)
 		}
 	})
 	t.Run("Test encode PLAIN followed by CTCP", func(t *testing.T) {
@@ -33,11 +35,24 @@ func TestEncode(t *testing.T) {
 			val, err := msg.Encode()
 			if err != nil {
 				t.Error(err)
+				return
 			}
 			value += val
 		}
 		if value != expected {
-			t.Fail()
+			t.Error("For", messages, "expected", expected, "got", value)
+		}
+	})
+	t.Run("Test encode SED encrypted text", func(t *testing.T) {
+		message := CTCP("SED \n\t\big\020\001\000\\:")
+		expected := "\001SED \020n\t\big\020\020\\a\0200\\\\:\001"
+		value, err := message.Encode()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if value != expected {
+			t.Error("For", []rune(message), "expected", []rune(expected), "got", []rune(value))
 		}
 	})
 }
@@ -49,13 +64,15 @@ func TestDecode(t *testing.T) {
 		values, err := Decode(message)
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if len(values) != len(expected) {
-			t.Fail()
+			t.Error("For", message, "expected", expected, "got", values)
+			return
 		}
 		for i, exp := range expected {
-			if values[i].Value() != exp.Value() {
-				t.Fail()
+			if i >= len(values) || values[i].Value() != exp.Value() {
+				t.Error("For", message, "expected", expected, "got", values)
 			}
 		}
 	})
