@@ -86,8 +86,7 @@ func Decode(message string) ([]Valuer, error) {
 	for i, char := range []byte(message) {
 		if char == mQuote {
 			if i != len(message)-1 {
-				val, ok := unescapeLowChar(message[i+1])
-				if ok {
+				if val, ok := unescapeLowChar(message[i+1]); ok {
 					decoded.WriteByte(val)
 				}
 			}
@@ -116,8 +115,7 @@ func Decode(message string) ([]Valuer, error) {
 			decoded.Reset()
 		} else if char == xQuote {
 			if i != len(message)-1 {
-				val, ok := unescapeXChar(message[i+1])
-				if ok {
+				if val, ok := unescapeXChar(message[i+1]); ok {
 					decoded.WriteByte(val)
 				}
 			}
