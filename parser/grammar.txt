@@ -1,0 +1,21 @@
+message     =  [ "@" tags SPACE ] [ ":" prefix SPACE ] command
+               [ params ] crlf
+
+tags        =  tag *[ ";" tag ]
+tag         =  key [ "=" value ]
+key         =  [ vendor "/" ] 1*( ALPHA / DIGIT / "-" )
+value       =  *valuechar
+valuechar   =  <any octet except NUL, BELL, CR, LF, semicolon (`;`) and SPACE>
+vendor      =  hostname
+
+prefix      =  servername / ( nickname [ [ "!" user ] "@" host ] )
+
+command     =  1*letter / 3digit
+
+params      =  *( SPACE middle ) [ SPACE ":" trailing ]
+nospcrlfcl  =  <any octet except NUL, CR, LF, colon (`:`) and SPACE>
+middle      =  nospcrlfcl *( ":" / nospcrlfcl )
+trailing    =  *( ":" / " " / nospcrlfcl )
+
+SPACE       =  %x20 *( %x20 )   ; space character(s)
+crlf        =  %x0D %x0A        ; "carriage return" "linefeed"
