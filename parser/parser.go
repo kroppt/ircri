@@ -161,7 +161,6 @@ func parseUntil(p *Parser, pred func(rune) bool) string {
 	if !ok {
 		return sb.String()
 	}
-	defer p.Rewind()
 	for pred(r) {
 		sb.WriteRune(r)
 		r, ok = p.Next()
@@ -169,6 +168,7 @@ func parseUntil(p *Parser, pred func(rune) bool) string {
 			return sb.String()
 		}
 	}
+	p.Rewind()
 	return sb.String()
 }
 
