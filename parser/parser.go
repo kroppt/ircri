@@ -154,8 +154,8 @@ func isValueRune(r rune) bool {
 	return false
 }
 
-// parseCond parses runes until the given predicate fails for one of the runes.
-func parseCond(p *Parser, pred func(rune) bool) string {
+// parseUntil parses runes until the given predicate fails for one of the runes.
+func parseUntil(p *Parser, pred func(rune) bool) string {
 	var sb strings.Builder
 	r, ok := p.Next()
 	if !ok {
@@ -179,11 +179,11 @@ func tagState(p *Parser) StateFn {
 	// parse tag key
 	// - parse vendor hostname optional string
 	// - parse any number of alpha, digit, '.', and '-' runes
-	key = parseCond(p, isHostnameRune)
+	key = parseUntil(p, isHostnameRune)
 	r, ok := p.Next()
 	if r == '/' {
 		vendor = key
-		key = parseCond(p, isHostnameRune)
+		key = parseUntil(p, isHostnameRune)
 		if len(key) == 0 {
 			// TODO handle error
 			return nil
@@ -217,7 +217,7 @@ func tagState(p *Parser) StateFn {
 	var value string
 	if r == '=' {
 		// parse any number of runes except NUL, BELL, CR, LF, ';', ' '
-		value = parseCond(p, isValueRune)
+		value = parseUntil(p, isValueRune)
 		r, ok = p.Next()
 		if !ok {
 			// TODO handle error
