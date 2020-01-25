@@ -156,20 +156,18 @@ func isValueRune(r rune) bool {
 
 // parseUntil parses runes until the given predicate fails for one of the runes.
 func parseUntil(p *Parser, pred func(rune) bool) string {
-	var sb strings.Builder
 	r, ok := p.Next()
 	if !ok {
-		return sb.String()
+		return ""
 	}
 	for pred(r) {
-		sb.WriteRune(r)
 		r, ok = p.Next()
 		if !ok {
-			return sb.String()
+			return p.Consume()
 		}
 	}
 	p.Rewind()
-	return sb.String()
+	return p.Consume()
 }
 
 func tagState(p *Parser) StateFn {
