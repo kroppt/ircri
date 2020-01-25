@@ -127,56 +127,16 @@ func beginState(p *Parser) StateFn {
 	return nil
 }
 
-func isHostnameRune(r rune) bool {
-	switch true {
-	case '0' <= r && r <= '9':
-	case 'A' <= r && r <= 'Z':
-	case 'a' <= r && r <= 'z':
-	case r == '.':
-	case r == '-':
-	default:
-		return false
-	}
-	return true
-}
-
-func isValueRune(r rune) bool {
-	switch r {
-	case '\x00': // NUL
-	case '\x07': // BEL
-	case '\x0D': // CR
-	case '\x0A': // LF
-	case ';':
-	case ' ':
-	default:
-		return true
-	}
-	return false
-}
-
-// parseUntil parses runes until the given predicate fails for one of the runes.
-func parseUntil(p *Parser, pred func(rune) bool) string {
-	r, ok := p.Next()
-	if !ok {
-		return ""
-	}
-	for pred(r) {
-		r, ok = p.Next()
-		if !ok {
-			return p.Consume()
-		}
-	}
-	p.Rewind()
-	return p.Consume()
-}
-
 func tagState(p *Parser) StateFn {
-	var newtag Tag
-	var key string
-	var vendor string
 	// parse tag key
 	// - parse vendor hostname optional string
 	// - parse any number of alpha, digit, '.', and '-' runes
+
+	var newtag Tag
+	var key string
+	var vendor string
+
+	p.Consume()
 	key = parseUntil(p, isHostnameRune)
 	r, ok := p.Next()
 	if r == '/' {
@@ -228,27 +188,27 @@ func tagState(p *Parser) StateFn {
 	if r == ';' {
 		// consume runes and store in tag list
 		p.msg.Tags = append(p.msg.Tags, newtag)
-		p.Consume()
 		return tagState
 	}
 
 	// ending rune for all tags
-	if r == ' ' {
-		// consume runes and store in tag list
-		p.msg.Tags = append(p.msg.Tags, newtag)
-		r, ok = p.Next()
-		p.Consume()
-		if !ok {
-			// TODO handle error
-			return nil
-		}
-		// transition to new state
-		if r == ':' {
-			return prefixState
-		}
-		return commandState
+	if r != ' ' {
+		// TODO handle error
+		return nil
 	}
-	return nil
+
+	// consume runes and store in tag list
+	p.msg.Tags = append(p.msg.Tags, newtag)
+	r, ok = p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	// transition to new state
+	if r == ':' {
+		return prefixState
+	}
+	return commandState
 }
 
 // TODO
@@ -259,4 +219,47 @@ func prefixState(p *Parser) StateFn {
 // TODO
 func commandState(p *Parser) StateFn {
 	return nil
+}
+
+// parseUntil parses runes until the given predicate fails for one of the runes.
+func parseUntil(p *Parser, pred func(rune) bool) string {
+	r, ok := p.Next()
+	if !ok {
+		return ""
+	}
+	for pred(r) {
+		r, ok = p.Next()
+		if !ok {
+			return p.Consume()
+		}
+	}
+	p.Rewind()
+	return p.Consume()
+}
+
+func isHostnameRune(r rune) bool {
+	switch true {
+	case '0' <= r && r <= '9':
+	case 'A' <= r && r <= 'Z':
+	case 'a' <= r && r <= 'z':
+	case r == '.':
+	case r == '-':
+	default:
+		return false
+	}
+	return true
+}
+
+func isValueRune(r rune) bool {
+	switch r {
+	case '\x00': // NUL
+	case '\x07': // BEL
+	case '\x0D': // CR
+	case '\x0A': // LF
+	case ';':
+	case ' ':
+	default:
+		return true
+	}
+	return false
 }
