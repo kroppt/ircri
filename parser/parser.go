@@ -25,12 +25,11 @@ type Tag struct {
 // Prefix is additional information about a message which optionally prepends
 // IRC messages after the optional tags.
 //
-// A prefix requires either a server name or a nickname.
+// A prefix requires a name, a servername or nickname.
 // Optionally, when specifying the nickname, one can specify the host and the
 // username.
 type Prefix struct {
-	Server   string
-	Nickname string
+	Name     string
 	Username string
 	Host     string
 }
@@ -211,9 +210,41 @@ func tagState(p *Parser) StateFn {
 	return commandState
 }
 
-// TODO
 func prefixState(p *Parser) StateFn {
-	return nil
+	p.Consume()
+	p.msg.Prefix.Name = parseUntil(p, isPrefixNameRune)
+
+	r, ok := p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+
+	if r == '!' || r == '@' {
+		if r == '!' {
+			p.msg.Prefix.Username = parseUntil(p, func(r rune) bool {
+				return r != '@'
+			})
+		}
+
+		r, ok = p.Next()
+		if !ok || r != '@' {
+			// TODO handle error
+			return nil
+		}
+		p.Consume()
+
+		p.msg.Prefix.Host = parseUntil(p, func(r rune) bool {
+			return r != ' '
+		})
+	}
+
+	if r != ' ' {
+		// TODO handle error
+		return nil
+	}
+
+	return commandState
 }
 
 // TODO
@@ -257,6 +288,17 @@ func isValueRune(r rune) bool {
 	case '\x0D': // CR
 	case '\x0A': // LF
 	case ';':
+	case ' ':
+	default:
+		return true
+	}
+	return false
+}
+
+func isPrefixNameRune(r rune) bool {
+	switch r {
+	case '!':
+	case '@':
 	case ' ':
 	default:
 		return true
