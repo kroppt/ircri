@@ -249,6 +249,31 @@ func prefixState(p *Parser) StateFn {
 
 // TODO
 func commandState(p *Parser) StateFn {
+	p.Consume()
+	str := parseUntil(p, isCommandRuneFunc())
+	r, ok := p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if r == ' ' {
+		return paramState
+	} else if r == '\n' {
+		// remove CR
+		str = str[:len(str)-1]
+		return endState
+	}
+	// TODO handle error
+	return nil
+}
+
+// TODO
+func paramState(p *Parser) StateFn {
+	return nil
+}
+
+// TODO
+func endState(p *Parser) StateFn {
 	return nil
 }
 
@@ -304,4 +329,22 @@ func isPrefixNameRune(r rune) bool {
 		return true
 	}
 	return false
+}
+
+func isCommandRuneFunc() func(r rune) bool {
+	var lastRuneCR bool
+	return func(r rune) bool {
+		if r == ' ' {
+			return false
+		}
+		if lastRuneCR && r == '\n' {
+			return false
+		}
+		if r == '\r' {
+			lastRuneCR = true
+			return true
+		}
+		lastRuneCR = false
+		return true
+	}
 }
