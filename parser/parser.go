@@ -257,8 +257,47 @@ func commandState(p *Parser) StateFn {
 	return nil
 }
 
-// TODO
 func paramState(p *Parser) StateFn {
+	p.Consume()
+	r, ok := p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if r == ':' {
+		return trailState
+	}
+	p.Consume()
+	r, ok = p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if !isParamRune(r) {
+		// TODO handle error
+		return nil
+	}
+	for {
+		r, ok = p.Next()
+		if !ok {
+			// TODO handle error
+			return nil
+		}
+		if r == ':' {
+			p.Rewind()
+			p.msg.Params = append(p.msg.Params, p.Consume())
+			p.Next()
+		} else if !isParamRune(r) {
+			p.Rewind()
+			break
+		}
+	}
+	p.msg.Params = append(p.msg.Params, p.Consume())
+	return trailState
+}
+
+// TODO
+func trailState(p *Parser) StateFn {
 	return nil
 }
 
@@ -337,4 +376,17 @@ func isCommandRuneFunc() func(r rune) bool {
 		lastRuneCR = false
 		return true
 	}
+}
+
+func isParamRune(r rune) bool {
+	switch r {
+	case '\x00': // NUL
+	case '\x0D': // CR
+	case '\x0A': // LF
+	case ':':
+	case ' ':
+	default:
+		return true
+	}
+	return false
 }
