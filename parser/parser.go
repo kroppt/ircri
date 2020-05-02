@@ -8,7 +8,7 @@ import (
 type Message struct {
 	Tags    []Tag
 	Prefix  Prefix
-	Command Command
+	Command string
 	Params  []string
 }
 
@@ -32,18 +32,6 @@ type Prefix struct {
 	Name     string
 	Username string
 	Host     string
-}
-
-// Command is required for any message.
-//
-// A command name is given for regular commands, typically sent by the
-// client to the server.
-//
-// A numeric command (aka numeric reply) is typically sent by the server to the
-// client as a reply to a previous command.
-type Command struct {
-	Name    string
-	Numeric string
 }
 
 // Parser holds state information necessary for parsing IRC messages.
@@ -250,17 +238,19 @@ func prefixState(p *Parser) StateFn {
 // TODO
 func commandState(p *Parser) StateFn {
 	p.Consume()
-	str := parseUntil(p, isCommandRuneFunc())
+	cmd := parseUntil(p, isCommandRuneFunc())
 	r, ok := p.Next()
 	if !ok {
 		// TODO handle error
 		return nil
 	}
 	if r == ' ' {
+		p.msg.Command = cmd
 		return paramState
 	} else if r == '\n' {
 		// remove CR
-		str = str[:len(str)-1]
+		cmd = cmd[:len(cmd)-1]
+		p.msg.Command = cmd
 		return endState
 	}
 	// TODO handle error
