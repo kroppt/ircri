@@ -92,6 +92,7 @@ type StateFn func(*Parser) StateFn
 
 // beginState is the entry point to the IRC message parsing state machine.
 func beginState(p *Parser) StateFn {
+	p.Consume()
 	p.msg = Message{}
 	r, ok := p.Next()
 	if !ok {
@@ -262,39 +263,30 @@ func paramState(p *Parser) StateFn {
 		return nil
 	}
 	if r == ':' {
+		p.Rewind()
 		return trailState
-	}
-	p.Consume()
-	r, ok = p.Next()
-	if !ok {
-		// TODO handle error
-		return nil
 	}
 	if !isParamRune(r) {
 		// TODO handle error
 		return nil
 	}
-	for {
-		r, ok = p.Next()
-		if !ok {
-			// TODO handle error
-			return nil
-		}
-		if r == ':' {
-			p.Rewind()
-			p.msg.Params = append(p.msg.Params, p.Consume())
-			p.Next()
-		} else if !isParamRune(r) {
-			p.Rewind()
-			break
-		}
+	p.msg.Params = append(p.msg.Params, parseUntil(p, isParamMiddleRune))
+	r, ok = p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
 	}
-	p.msg.Params = append(p.msg.Params, p.Consume())
-	return trailState
+	if r == ' ' {
+		return paramState
+	}
+	if r != '\x0D' { // CR {
+		return endState
+	}
+	// TODO handle error
+	return nil
 }
 
 func trailState(p *Parser) StateFn {
-	p.Consume()
 	r, ok := p.Next()
 	if !ok {
 		// TODO handle error
@@ -328,9 +320,7 @@ func trailState(p *Parser) StateFn {
 }
 
 func endState(p *Parser) StateFn {
-	p.Consume()
 	p.output <- p.msg
-	p.msg = Message{}
 	return beginState
 }
 
@@ -412,6 +402,18 @@ func isParamRune(r rune) bool {
 	case '\x0D': // CR
 	case '\x0A': // LF
 	case ':':
+	case ' ':
+	default:
+		return true
+	}
+	return false
+}
+
+func isParamMiddleRune(r rune) bool {
+	switch r {
+	case '\x00': // NUL
+	case '\x0D': // CR
+	case '\x0A': // LF
 	case ' ':
 	default:
 		return true
