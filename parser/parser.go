@@ -235,7 +235,6 @@ func prefixState(p *Parser) StateFn {
 	return commandState
 }
 
-// TODO
 func commandState(p *Parser) StateFn {
 	p.Consume()
 	cmd := parseUntil(p, isCommandRuneFunc())
@@ -330,9 +329,11 @@ func trailState(p *Parser) StateFn {
 	return endState
 }
 
-// TODO
 func endState(p *Parser) StateFn {
-	return nil
+	p.Consume()
+	p.output <- p.msg
+	p.msg = Message{}
+	return beginState
 }
 
 // parseUntil parses runes until the given predicate fails for one of the runes.
