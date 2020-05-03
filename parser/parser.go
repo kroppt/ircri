@@ -296,9 +296,38 @@ func paramState(p *Parser) StateFn {
 	return trailState
 }
 
-// TODO
 func trailState(p *Parser) StateFn {
-	return nil
+	p.Consume()
+	r, ok := p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if r != ':' {
+		// TODO handle error
+		return nil
+	}
+	p.Consume()
+	p.msg.Params = append(p.msg.Params, parseUntil(p, isTrailingParamRune))
+	r, ok = p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if r != '\x0D' { // CR
+		// TODO handle error
+		return nil
+	}
+	r, ok = p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
+	if r != '\x0A' { // LF
+		// TODO handle error
+		return nil
+	}
+	return endState
 }
 
 // TODO
@@ -385,6 +414,17 @@ func isParamRune(r rune) bool {
 	case '\x0A': // LF
 	case ':':
 	case ' ':
+	default:
+		return true
+	}
+	return false
+}
+
+func isTrailingParamRune(r rune) bool {
+	switch r {
+	case '\x00': // NUL
+	case '\x0D': // CR
+	case '\x0A': // LF
 	default:
 		return true
 	}
