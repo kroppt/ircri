@@ -66,7 +66,7 @@ func (p *Parser) Run() {
 
 // Next returns the next rune to be looked at and a boolean for if a rune exists.
 func (p *Parser) Next() (rune, bool) {
-	if p.pos > len(p.input) {
+	if p.pos >= len(p.input) {
 		return 0, false
 	}
 	r := p.input[p.pos]
@@ -95,14 +95,13 @@ func beginState(p *Parser) StateFn {
 	p.msg = Message{}
 	r, ok := p.Next()
 	if !ok {
+		// TODO handle error
 		return nil
 	}
 	if r == '@' {
-		p.Consume()
 		return tagState
 	}
 	if r == ':' {
-		p.Consume()
 		return prefixState
 	}
 	if (r > 'a' && r < 'z') || (r > 'A' && r < 'Z') || (r > '0' && r < '9') {
@@ -110,7 +109,6 @@ func beginState(p *Parser) StateFn {
 		p.Rewind()
 		return commandState
 	}
-	p.Consume()
 	return nil
 }
 
