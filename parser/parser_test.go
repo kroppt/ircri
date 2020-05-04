@@ -3,6 +3,7 @@ package parser
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 type basicExpect struct {
@@ -17,9 +18,14 @@ func testParserExpect(t *testing.T, tests []basicExpect) {
 			p, out := NewParser(1)
 			p.input = []rune(test.input)
 			go p.Run()
-			msg := <-out
-			if !reflect.DeepEqual(msg, test.expect) {
-				t.Errorf("expected %v to equal %v\n", msg, test.expect)
+			select {
+			case msg := <-out:
+				if !reflect.DeepEqual(msg, test.expect) {
+					t.Errorf("expected %v to equal %v\n", msg, test.expect)
+				}
+			case <-time.After(1 * time.Second):
+				t.Errorf("timed out after 1 second")
+				return
 			}
 		})
 	}
