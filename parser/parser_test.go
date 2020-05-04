@@ -19,13 +19,14 @@ func testParserExpect(t *testing.T, tests []basicExpect) {
 			p.input = []rune(test.input)
 			go p.Run()
 			select {
-			case msg := <-out:
-				if !reflect.DeepEqual(msg, test.expect) {
+			case msg, ok := <-out:
+				if !ok {
+					t.Error("message channel closed unexpectedly\n")
+				} else if !reflect.DeepEqual(msg, test.expect) {
 					t.Errorf("expected %v to equal %v\n", msg, test.expect)
 				}
 			case <-time.After(1 * time.Second):
-				t.Errorf("timed out after 1 second")
-				return
+				t.Error("timed out after 1 second\n")
 			}
 		})
 	}
