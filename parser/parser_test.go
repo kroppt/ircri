@@ -68,6 +68,7 @@ func TestParserExamples(t *testing.T) {
 		{"param example 2", "CAP * LS :multi-prefix sasl\r\n", paramEx2Msg},
 		{"param example 3", "CAP REQ :sasl message-tags foo\r\n", paramEx3Msg},
 		{"param example 4", ":dan!d@localhost PRIVMSG #chan :Hey!\r\n", paramEx4Msg},
+		{"param example 5", ":dan!d@localhost PRIVMSG #chan Hey!\r\n", paramEx4Msg},
 	}
 	testParserExpect(t, tests)
 }

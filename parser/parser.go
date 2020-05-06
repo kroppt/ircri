@@ -285,11 +285,10 @@ func paramState(p *Parser) StateFn {
 	if r == ' ' {
 		return paramState
 	}
-	if r != '\x0D' { // CR {
-		return endState
+	if r != '\x0D' { // CR
+		return trailState
 	}
-	// TODO handle error
-	return nil
+	return endState
 }
 
 func trailState(p *Parser) StateFn {
