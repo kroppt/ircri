@@ -137,21 +137,23 @@ func tagState(p *Parser) StateFn {
 		// TODO handle error
 		return nil
 	}
-	if vendor[0] == '.' || vendor[0] == '-' {
-		// TODO handle error
-		return nil
-	}
-	if vendor[len(vendor)-1] == '.' {
-		vendor = vendor[:len(vendor)-1]
-	}
-	if len(vendor) > 253 {
-		// TODO handle error
-		return nil
-	}
-	for _, lbl := range strings.Split(vendor, ".") {
-		if len(lbl) < 0 || len(lbl) > 63 {
+	if vendor != "" {
+		if vendor[0] == '.' || vendor[0] == '-' {
 			// TODO handle error
 			return nil
+		}
+		if vendor[len(vendor)-1] == '.' {
+			vendor = vendor[:len(vendor)-1]
+		}
+		if len(vendor) > 253 {
+			// TODO handle error
+			return nil
+		}
+		for _, lbl := range strings.Split(vendor, ".") {
+			if len(lbl) < 0 || len(lbl) > 63 {
+				// TODO handle error
+				return nil
+			}
 		}
 	}
 	newtag.Key = key
@@ -160,6 +162,7 @@ func tagState(p *Parser) StateFn {
 	// parse optional tag value
 	var value string
 	if r == '=' {
+		p.Consume()
 		// parse any number of runes except NUL, BELL, CR, LF, ';', ' '
 		value = parseUntil(p, isValueRune)
 		r, ok = p.Next()
