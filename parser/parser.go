@@ -209,6 +209,7 @@ func prefixState(p *Parser) StateFn {
 
 	if r == '!' || r == '@' {
 		if r == '!' {
+			p.Consume()
 			p.msg.Prefix.Username = parseUntil(p, func(r rune) bool {
 				return r != '@'
 			})
@@ -224,6 +225,11 @@ func prefixState(p *Parser) StateFn {
 		p.msg.Prefix.Host = parseUntil(p, func(r rune) bool {
 			return r != ' '
 		})
+		r, ok = p.Next()
+		if !ok {
+			// TODO handle error
+			return nil
+		}
 	}
 
 	if r != ' ' {
