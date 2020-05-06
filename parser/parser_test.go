@@ -81,6 +81,10 @@ func TestParserExamples(t *testing.T) {
 		Command: "PRIVMSG",
 		Params:  []string{"#chan", "Hey what's up!"},
 	}
+	completeEx3Msg := Message{
+		Command: "CAP",
+		Params:  []string{"REQ", "sasl"},
+	}
 	tests := []basicExpect{
 		{"param example 1", ":irc.example.com CAP * LIST :\r\n", paramEx1Msg},
 		{"param example 2", "CAP * LS :multi-prefix sasl\r\n", paramEx2Msg},
@@ -89,6 +93,7 @@ func TestParserExamples(t *testing.T) {
 		{"param example 5", ":dan!d@localhost PRIVMSG #chan Hey!\r\n", paramEx4Msg},
 		{"complete example 1", ":irc.example.com CAP LS * :multi-prefix extended-join sasl\r\n", completeEx1Msg},
 		{"complete example 2", "@id=234AB :dan!d@localhost PRIVMSG #chan :Hey what's up!\r\n", completeEx2Msg},
+		{"complete example 3", "CAP REQ :sasl\r\n", completeEx3Msg},
 	}
 	testParserExpect(t, tests)
 }
