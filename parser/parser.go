@@ -197,6 +197,7 @@ func tagState(p *Parser) StateFn {
 	if r == ':' {
 		return prefixState
 	}
+	p.Rewind()
 	return commandState
 }
 
