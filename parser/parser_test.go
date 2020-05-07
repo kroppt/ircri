@@ -48,6 +48,13 @@ func TestParserExamples(t *testing.T) {
 		},
 		Command: "CAP",
 	}
+	tagEx2Msg := Message{
+		Tags: []Tag{
+			{Key: "url"},
+			{Key: "netsplit", Value: "tur,ty"},
+		},
+		Command: "CAP",
+	}
 	paramEx1Msg := Message{
 		Prefix:  Prefix{Name: "irc.example.com"},
 		Command: "CAP",
@@ -94,6 +101,7 @@ func TestParserExamples(t *testing.T) {
 	}
 	tests := []basicExpect{
 		{"tag example 1", "@id=123AB;rose CAP\r\n", tagEx1Msg},
+		{"tag example 2", "@url=;netsplit=tur,ty CAP\r\n", tagEx2Msg},
 		{"param example 1", ":irc.example.com CAP * LIST :\r\n", paramEx1Msg},
 		{"param example 2", "CAP * LS :multi-prefix sasl\r\n", paramEx2Msg},
 		{"param example 3", "CAP REQ :sasl message-tags foo\r\n", paramEx3Msg},
