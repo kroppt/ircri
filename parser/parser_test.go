@@ -81,11 +81,7 @@ func TestParserExamples(t *testing.T) {
 		Params:  []string{"REQ", "sasl message-tags foo"},
 	}
 	paramEx4Msg := Message{
-		Prefix: Prefix{
-			Name:     "dan",
-			Username: "d",
-			Host:     "localhost",
-		},
+		Prefix:  Prefix{Name: "dan", Username: "d", Host: "localhost"},
 		Command: "PRIVMSG",
 		Params:  []string{"#chan", "Hey!"},
 	}
@@ -95,21 +91,28 @@ func TestParserExamples(t *testing.T) {
 		Params:  []string{"LS", "*", "multi-prefix extended-join sasl"},
 	}
 	completeEx2Msg := Message{
-		Tags: []Tag{{
-			Key:   "id",
-			Value: "234AB",
-		}},
-		Prefix: Prefix{
-			Name:     "dan",
-			Username: "d",
-			Host:     "localhost",
+		Tags: []Tag{
+			{Key: "id", Value: "234AB"},
 		},
+		Prefix:  Prefix{Name: "dan", Username: "d", Host: "localhost"},
 		Command: "PRIVMSG",
 		Params:  []string{"#chan", "Hey what's up!"},
 	}
 	completeEx3Msg := Message{
 		Command: "CAP",
 		Params:  []string{"REQ", "sasl"},
+	}
+	completeEx4Msg := Message{
+		Tags: []Tag{
+			{Vendor: "address1", Key: "k1", Value: "v1"},
+			{Vendor: "address2", Key: "k2", Value: "v2"},
+			{Key: "k3", Value: "v3"},
+			{Key: "k4"},
+			{Key: "k5"},
+		},
+		Prefix:  Prefix{Name: "full", Username: "nick", Host: "address"},
+		Command: "CMD",
+		Params:  []string{"param1", "param2", "spaced param"},
 	}
 	tests := []basicExpect{
 		{"tag example 1", "@id=123AB;rose CAP\r\n", tagEx1Msg},
@@ -124,6 +127,7 @@ func TestParserExamples(t *testing.T) {
 		{"complete example 1", ":irc.example.com CAP LS * :multi-prefix extended-join sasl\r\n", completeEx1Msg},
 		{"complete example 2", "@id=234AB :dan!d@localhost PRIVMSG #chan :Hey what's up!\r\n", completeEx2Msg},
 		{"complete example 3", "CAP REQ :sasl\r\n", completeEx3Msg},
+		{"complete example 4", "@address1/k1=v1;address2/k2=v2;k3=v3;k4=;k5 :full!nick@address CMD param1 param2 :spaced param\r\n", completeEx4Msg},
 	}
 	testParserExpect(t, tests)
 }
