@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const timeout = 1 * time.Second
+
 type basicExpect struct {
 	name   string
 	input  string
@@ -25,8 +27,37 @@ func testParserExpect(t *testing.T, tests []basicExpect) {
 				} else if !reflect.DeepEqual(msg, test.expect) {
 					t.Errorf("expected %v to equal %v\n", msg, test.expect)
 				}
-			case <-time.After(1 * time.Second):
+			case <-time.After(timeout):
 				t.Error("timed out after 1 second\n")
+			}
+		})
+	}
+}
+
+type failExpect struct {
+	name  string
+	input string
+}
+
+func testParserFails(t *testing.T, tests []failExpect) {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			p, out := NewParser(1)
+			p.input = []rune(test.input)
+			done := make(chan struct{})
+			go func() { p.Run(); done <- struct{}{} }()
+			select {
+			case <-done:
+			case <-time.After(timeout):
+				t.Error("timed out after 1 second\n")
+				return
+			}
+			select {
+			case msg, ok := <-out:
+				if ok {
+					t.Errorf("expected parse failure but got %v\n", msg)
+				}
+			default:
 			}
 		})
 	}
