@@ -200,6 +200,10 @@ func tagState(p *Parser) StateFn {
 		// TODO handle error
 		return nil
 	}
+	if !skipSpaces(p) {
+		// TODO handle error
+		return nil
+	}
 
 	// consume runes and store in tag list
 	p.msg.Tags = append(p.msg.Tags, newtag)
@@ -255,6 +259,10 @@ func prefixState(p *Parser) StateFn {
 		// TODO handle error
 		return nil
 	}
+	if !skipSpaces(p) {
+		// TODO handle error
+		return nil
+	}
 
 	return commandState
 }
@@ -295,6 +303,10 @@ func commandState(p *Parser) StateFn {
 	// verify contents
 	p.msg.Command = cmd
 	if r == ' ' {
+		if !skipSpaces(p) {
+			// TODO handle error
+			return nil
+		}
 		return paramState
 	} else if r == '\n' {
 		return endState
@@ -325,6 +337,10 @@ func paramState(p *Parser) StateFn {
 		return nil
 	}
 	if r == ' ' {
+		if !skipSpaces(p) {
+			// TODO handle error
+			return nil
+		}
 		return paramState
 	}
 	if r != '\x0D' { // CR
@@ -478,4 +494,19 @@ func isTrailingParamRune(r rune) bool {
 		return true
 	}
 	return false
+}
+
+func skipSpaces(p *Parser) bool {
+	r, ok := p.Next()
+	if !ok {
+		return false
+	}
+	for r == ' ' {
+		r, ok = p.Next()
+		if !ok {
+			return false
+		}
+	}
+	p.Rewind()
+	return true
 }

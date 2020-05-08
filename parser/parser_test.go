@@ -64,9 +64,36 @@ func testParserFails(t *testing.T, tests []failExpect) {
 }
 
 func TestParserBasic(t *testing.T) {
+	singleTagMsg := Message{
+		Tags: []Tag{
+			{Key: "verb"},
+		},
+		Command: "TEST",
+	}
+	manySpacesParamsMsg := Message{
+		Command: "TEST",
+		Params:  []string{"abc"},
+	}
+	manySpacesTagsMsg := Message{
+		Tags: []Tag{
+			{Key: "verb"},
+		},
+		Command: "TEST",
+	}
+	manySpacesPrefixMsg := Message{
+		Tags: []Tag{
+			{Key: "verb"},
+		},
+		Prefix:  Prefix{Name: "abc.com"},
+		Command: "TEST",
+	}
 	tests := []basicExpect{
 		{"numeric command", "132\r\n", Message{Command: "132"}},
 		{"string command", "TESTING\r\n", Message{Command: "TESTING"}},
+		{"single tag", "@verb TEST\r\n", singleTagMsg},
+		{"many spaces params", "TEST   abc\r\n", manySpacesParamsMsg},
+		{"many spaces tags", "@verb   TEST\r\n", manySpacesTagsMsg},
+		{"many spaces prefix", "@verb  :abc.com  TEST\r\n", manySpacesPrefixMsg},
 	}
 	testParserExpect(t, tests)
 }
