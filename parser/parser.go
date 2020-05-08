@@ -125,10 +125,20 @@ func tagState(p *Parser) StateFn {
 	p.Consume()
 	key = parseUntil(p, isHostnameRune)
 	r, ok := p.Next()
+	if !ok {
+		// TODO handle error
+		return nil
+	}
 	if r == '/' {
 		vendor = key
+		p.Consume()
 		key = parseUntil(p, isHostnameRune)
 		if len(key) == 0 {
+			// TODO handle error
+			return nil
+		}
+		r, ok = p.Next()
+		if !ok {
 			// TODO handle error
 			return nil
 		}
