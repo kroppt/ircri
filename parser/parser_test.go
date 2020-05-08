@@ -170,6 +170,7 @@ func TestParserFailures(t *testing.T) {
 		{"short numeric command", "12\r\n"},
 		{"long numeric command", "1234\r\n"},
 		{"number-letter command", "12A\r\n"},
+		{"extra tag delim", "@id=123AB; CAP\r\n"},
 	}
 	testParserFails(t, tests)
 }

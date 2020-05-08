@@ -167,6 +167,10 @@ func tagState(p *Parser) StateFn {
 			}
 		}
 	}
+	if key == "" {
+		// TODO handle error
+		return nil
+	}
 	newtag.Key = key
 	newtag.Vendor = vendor
 
