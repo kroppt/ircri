@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// when debugging, set this timeout to like an hour or something
 const timeout = 1 * time.Second
 
 type basicExpect struct {
@@ -19,7 +20,14 @@ func testParserExpect(t *testing.T, tests []basicExpect) {
 		t.Run(test.name, func(t *testing.T) {
 			p, out := NewParser(1)
 			p.input = []rune(test.input)
-			go p.Run()
+			done := make(chan struct{})
+			go func() { p.Run(); done <- struct{}{} }()
+			select {
+			case <-done:
+			case <-time.After(timeout):
+				t.Error("timed out after 1 second\n")
+				return
+			}
 			select {
 			case msg, ok := <-out:
 				if !ok {
@@ -27,8 +35,8 @@ func testParserExpect(t *testing.T, tests []basicExpect) {
 				} else if !reflect.DeepEqual(msg, test.expect) {
 					t.Errorf("expected %v to equal %v\n", msg, test.expect)
 				}
-			case <-time.After(timeout):
-				t.Error("timed out after 1 second\n")
+			default:
+				t.Error("expected parsed message but got failure\n")
 			}
 		})
 	}
