@@ -171,6 +171,9 @@ func TestParserFailures(t *testing.T) {
 		{"long numeric command", "1234\r\n"},
 		{"number-letter command", "12A\r\n"},
 		{"extra tag delim", "@id=123AB; CAP\r\n"},
+		{"end after tags", "@id=123AB\r\n"},
+		{"end after prefix", ":irc.example.com\r\n"},
+		{"trailing space", "CAP \r\n"},
 	}
 	testParserFails(t, tests)
 }
