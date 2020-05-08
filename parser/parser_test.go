@@ -162,3 +162,14 @@ func TestParserExamples(t *testing.T) {
 	}
 	testParserExpect(t, tests)
 }
+
+func TestParserFailures(t *testing.T) {
+	tests := []failExpect{
+		{"empty input", ""},
+		{"empty message", "\r\n"},
+		{"short numeric command", "12\r\n"},
+		{"long numeric command", "1234\r\n"},
+		{"number-letter command", "12A\r\n"},
+	}
+	testParserFails(t, tests)
+}

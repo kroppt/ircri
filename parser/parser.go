@@ -2,6 +2,7 @@ package parser
 
 import (
 	"strings"
+	"unicode"
 )
 
 // Message represents a parsed IRC message.
@@ -262,13 +263,36 @@ func commandState(p *Parser) StateFn {
 		// TODO handle error
 		return nil
 	}
-	if r == ' ' {
-		p.msg.Command = cmd
-		return paramState
-	} else if r == '\n' {
+	if r == '\n' {
 		// remove CR
 		cmd = cmd[:len(cmd)-1]
-		p.msg.Command = cmd
+	}
+	first := []rune(cmd)[0]
+	// verify length
+	if unicode.IsNumber(first) {
+		if len(cmd) != 3 {
+			// TODO handle error
+			return nil
+		}
+		for _, r := range cmd {
+			if !unicode.IsNumber(r) {
+				// TODO handle error
+				return nil
+			}
+		}
+	} else {
+		for _, r := range cmd {
+			if !unicode.IsLetter(r) {
+				// TODO handle error
+				return nil
+			}
+		}
+	}
+	// verify contents
+	p.msg.Command = cmd
+	if r == ' ' {
+		return paramState
+	} else if r == '\n' {
 		return endState
 	}
 	// TODO handle error
@@ -400,18 +424,19 @@ func isPrefixNameRune(r rune) bool {
 func isCommandRuneFunc() func(r rune) bool {
 	var lastRuneCR bool
 	return func(r rune) bool {
-		if r == ' ' {
-			return false
-		}
-		if lastRuneCR && r == '\n' {
-			return false
-		}
-		if r == '\r' {
+		switch {
+		case r == ' ':
+		case lastRuneCR && r == '\n':
+		case r == '\r':
 			lastRuneCR = true
 			return true
+		case unicode.IsLetter(r):
+			fallthrough
+		case unicode.IsNumber(r):
+			lastRuneCR = false
+			return true
 		}
-		lastRuneCR = false
-		return true
+		return false
 	}
 }
 
