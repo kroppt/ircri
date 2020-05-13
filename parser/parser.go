@@ -39,6 +39,7 @@ type Prefix struct {
 type Parser struct {
 	// message currently being built
 	msg   Message
+	state StateFn
 	cin   <-chan []rune
 	cout  chan<- Message
 	input []rune
@@ -50,8 +51,9 @@ type Parser struct {
 // The parser is responsible for creating and closing its output channel.
 func NewParser(in <-chan []rune, out chan<- Message) *Parser {
 	return &Parser{
-		cin:  in,
-		cout: out,
+		state: beginState,
+		cin:   in,
+		cout:  out,
 	}
 }
 
@@ -59,7 +61,6 @@ func NewParser(in <-chan []rune, out chan<- Message) *Parser {
 //
 // The output is passed through the Parser's output channel.
 func (p *Parser) Run(cancel <-chan struct{}) {
-	state := beginState
 	for {
 		select {
 		case rs, ok := <-p.cin:
@@ -70,10 +71,10 @@ func (p *Parser) Run(cancel <-chan struct{}) {
 		case <-cancel:
 			return
 		default:
-			if state == nil {
+			if p.state == nil {
 				return
 			}
-			state = state(p)
+			p.state = p.state(p)
 		}
 	}
 }
