@@ -18,10 +18,21 @@ type basicExpect struct {
 func testParserExpect(t *testing.T, tests []basicExpect) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			p, out := NewParser(1)
-			p.input = []rune(test.input)
+			in, out := make(chan []rune, 1), make(chan Message, 1)
+			p := NewParser(in, out)
+			in <- []rune(test.input)
+			cancel := make(chan struct{})
 			done := make(chan struct{})
-			go func() { p.Run(); done <- struct{}{} }()
+			go func() {
+				p.Run(cancel)
+				done <- struct{}{}
+			}()
+			defer func() {
+				close(cancel)
+				close(done)
+				close(in)
+				close(out)
+			}()
 			select {
 			case <-done:
 			case <-time.After(timeout):
@@ -50,10 +61,21 @@ type failExpect struct {
 func testParserFails(t *testing.T, tests []failExpect) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			p, out := NewParser(1)
-			p.input = []rune(test.input)
+			in, out := make(chan []rune, 1), make(chan Message, 1)
+			p := NewParser(in, out)
+			in <- []rune(test.input)
+			cancel := make(chan struct{})
 			done := make(chan struct{})
-			go func() { p.Run(); done <- struct{}{} }()
+			go func() {
+				p.Run(cancel)
+				done <- struct{}{}
+			}()
+			defer func() {
+				close(cancel)
+				close(done)
+				close(in)
+				close(out)
+			}()
 			select {
 			case <-done:
 			case <-time.After(timeout):

@@ -38,30 +38,43 @@ type Prefix struct {
 // Parser holds state information necessary for parsing IRC messages.
 type Parser struct {
 	// message currently being built
-	msg    Message
-	output chan<- Message
-	input  []rune
-	pos    int
+	msg   Message
+	cin   <-chan []rune
+	cout  chan<- Message
+	input []rune
+	pos   int
 }
 
 // NewParser returns a parser with an output buffer of the given size.
 //
 // The parser is responsible for creating and closing its output channel.
-func NewParser(size int) (*Parser, <-chan Message) {
-	chout := make(chan Message, size)
+func NewParser(in <-chan []rune, out chan<- Message) *Parser {
 	return &Parser{
-		output: chout,
-		pos:    0,
-	}, chout
+		cin:  in,
+		cout: out,
+	}
 }
 
 // Run begins the main execution loop for parsing.
 //
 // The output is passed through the Parser's output channel.
-func (p *Parser) Run() {
-	var state StateFn
-	for state = beginState; state != nil; {
-		state = state(p)
+func (p *Parser) Run(cancel <-chan struct{}) {
+	state := beginState
+	for {
+		select {
+		case rs, ok := <-p.cin:
+			if !ok {
+				panic("parser: input channel closed prematurely")
+			}
+			p.input = append(p.input, rs...)
+		case <-cancel:
+			return
+		default:
+			if state == nil {
+				return
+			}
+			state = state(p)
+		}
 	}
 }
 
@@ -383,7 +396,7 @@ func trailState(p *Parser) StateFn {
 }
 
 func endState(p *Parser) StateFn {
-	p.output <- p.msg
+	p.cout <- p.msg
 	return beginState
 }
 
