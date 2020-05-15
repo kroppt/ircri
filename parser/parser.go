@@ -13,6 +13,12 @@ type Message struct {
 	Params  []string
 }
 
+// Error is
+type Error struct {
+	Partial Message
+	Message string
+}
+
 // Tag is a key setting which optionally prepends IRC messages.
 //
 // A tag may optionally have a value associated with the key.
@@ -38,22 +44,26 @@ type Prefix struct {
 // Parser holds state information necessary for parsing IRC messages.
 type Parser struct {
 	// message currently being built
-	msg   Message
-	state StateFn
-	cin   <-chan []rune
-	cout  chan<- Message
-	input []rune
-	pos   int
+	msg    Message
+	cstate chan StateFn
+	cin    <-chan []rune
+	cout   chan<- Message
+	cerr   chan<- Error
+	input  []rune
+	pos    int
 }
 
 // NewParser returns a parser with an output buffer of the given size.
 //
 // The parser is responsible for creating and closing its output channel.
-func NewParser(in <-chan []rune, out chan<- Message) *Parser {
+func NewParser(in <-chan []rune, out chan<- Message, err chan<- Error) *Parser {
+	state := make(chan StateFn, 1)
+	state <- beginState
 	return &Parser{
-		state: beginState,
-		cin:   in,
-		cout:  out,
+		cstate: state,
+		cin:    in,
+		cout:   out,
+		cerr:   err,
 	}
 }
 
@@ -68,13 +78,21 @@ func (p *Parser) Run(cancel <-chan struct{}) {
 				panic("parser: input channel closed prematurely")
 			}
 			p.input = append(p.input, rs...)
+			// start again if waiting for input
+			select {
+			case state := <-p.cstate:
+				p.cstate <- state
+			default:
+				p.cstate <- beginState
+			}
 		case <-cancel:
 			return
-		default:
-			if p.state == nil {
-				return
+		case state := <-p.cstate:
+			state = state(p)
+			if state != nil {
+				// pause if waiting for input
+				p.cstate <- state
 			}
-			p.state = p.state(p)
 		}
 	}
 }
@@ -102,6 +120,10 @@ func (p *Parser) Consume() string {
 	return out
 }
 
+func (p *Parser) sendError(msg string) {
+	p.cerr <- Error{Partial: p.msg, Message: msg}
+}
+
 // StateFn returns the next state function to run.
 type StateFn func(*Parser) StateFn
 
@@ -111,7 +133,6 @@ func beginState(p *Parser) StateFn {
 	p.msg = Message{}
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
 		return nil
 	}
 	if r == '@' {
@@ -125,7 +146,8 @@ func beginState(p *Parser) StateFn {
 		p.Rewind()
 		return commandState
 	}
-	return nil
+	p.sendError("parser: (begin state) invalid first character '" + string(r) + "'")
+	return errorState
 }
 
 func tagState(p *Parser) StateFn {
@@ -139,51 +161,55 @@ func tagState(p *Parser) StateFn {
 
 	p.Consume()
 	key = parseUntil(p, isHostnameRune)
+
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (tag state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r == '/' {
 		vendor = key
 		p.Consume()
 		key = parseUntil(p, isHostnameRune)
 		if len(key) == 0 {
-			// TODO handle error
-			return nil
+			p.sendError("parser: (tag state) missing hostname after vendor")
+			return errorState
 		}
 		r, ok = p.Next()
 		if !ok {
-			// TODO handle error
+			p.sendError("parser: (tag state) unexpected end of input")
+			p.Consume()
 			return nil
 		}
 	}
 	if strings.ContainsRune(key, '.') {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (tag state) unexpected '.' in key")
+		return errorState
 	}
 	if vendor != "" {
 		if vendor[0] == '.' || vendor[0] == '-' {
-			// TODO handle error
-			return nil
+			p.sendError("parser: (tag state) unexpected '" + string(vendor[0]) + "' at beginning of vendor")
+			return errorState
 		}
 		if vendor[len(vendor)-1] == '.' {
 			vendor = vendor[:len(vendor)-1]
 		}
 		if len(vendor) > 253 {
-			// TODO handle error
-			return nil
+			p.sendError("parser: (tag state) hostname exceeds length limit of 253")
+			return errorState
 		}
 		for _, lbl := range strings.Split(vendor, ".") {
-			if len(lbl) < 0 || len(lbl) > 63 {
-				// TODO handle error
-				return nil
+			if len(lbl) <= 0 || len(lbl) > 63 {
+				p.sendError("parser: (tag state) hostname label must be between 1 and 63 characters long")
+				return errorState
 			}
 		}
 	}
 	if key == "" {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (tag state) missing valid character after tag symbol '@'")
+		return errorState
 	}
 	newtag.Key = key
 	newtag.Vendor = vendor
@@ -196,7 +222,8 @@ func tagState(p *Parser) StateFn {
 		value = parseUntil(p, isValueRune)
 		r, ok = p.Next()
 		if !ok {
-			// TODO handle error
+			p.sendError("parser: (tag state) unexpected end of input")
+			p.Consume()
 			return nil
 		}
 	}
@@ -211,11 +238,12 @@ func tagState(p *Parser) StateFn {
 
 	// ending rune for all tags
 	if r != ' ' {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (tag state) expected ' ' at end of tags")
+		return errorState
 	}
 	if !skipSpaces(p) {
-		// TODO handle error
+		p.sendError("parser: (tag state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
 
@@ -223,13 +251,15 @@ func tagState(p *Parser) StateFn {
 	p.msg.Tags = append(p.msg.Tags, newtag)
 	r, ok = p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (tag state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
 	// transition to new state
 	if r == ':' {
 		return prefixState
 	}
+
 	p.Rewind()
 	return commandState
 }
@@ -240,7 +270,8 @@ func prefixState(p *Parser) StateFn {
 
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (prefix state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
 
@@ -250,31 +281,38 @@ func prefixState(p *Parser) StateFn {
 			p.msg.Prefix.Username = parseUntil(p, func(r rune) bool {
 				return r != '@'
 			})
+			r, ok = p.Next()
+			if !ok {
+				p.sendError("parser: (prefix state) unexpected end of input")
+				p.Consume()
+				return nil
+			}
 		}
 
-		r, ok = p.Next()
-		if !ok || r != '@' {
-			// TODO handle error
-			return nil
+		if r != '@' {
+			p.sendError("parser: (prefix state) expected '@' but got '" + string(r) + "'")
+			return errorState
 		}
 		p.Consume()
 
 		p.msg.Prefix.Host = parseUntil(p, func(r rune) bool {
-			return r != ' '
+			return (r >= 0 && r < unicode.MaxASCII) && r != ' '
 		})
 		r, ok = p.Next()
 		if !ok {
-			// TODO handle error
+			p.sendError("parser: (prefix state) unexpected end of input")
+			p.Consume()
 			return nil
 		}
 	}
 
 	if r != ' ' {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (prefix state) expected ' ' but got '" + string(r) + "'")
+		return errorState
 	}
 	if !skipSpaces(p) {
-		// TODO handle error
+		p.sendError("parser: (prefix state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
 
@@ -284,75 +322,88 @@ func prefixState(p *Parser) StateFn {
 func commandState(p *Parser) StateFn {
 	p.Consume()
 	cmd := parseUntil(p, isCommandRuneFunc())
+
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (command state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r == '\n' {
 		// remove CR
 		cmd = cmd[:len(cmd)-1]
 	}
+
 	first := []rune(cmd)[0]
 	// verify length
 	if unicode.IsNumber(first) {
 		if len(cmd) != 3 {
-			// TODO handle error
-			return nil
+			p.sendError("parser: (command state) expected numeric command of length 3")
+			return errorState
 		}
 		for _, r := range cmd {
 			if !unicode.IsNumber(r) {
-				// TODO handle error
-				return nil
+				p.sendError("parser: (command state) expected numeric command to only contain numbers")
+				return errorState
 			}
 		}
 	} else {
 		for _, r := range cmd {
 			if !unicode.IsLetter(r) {
-				// TODO handle error
-				return nil
+				p.sendError("parser: (command state) expected command to only contain letters")
+				return errorState
 			}
 		}
 	}
+
 	// verify contents
 	p.msg.Command = cmd
 	if r == ' ' {
 		if !skipSpaces(p) {
-			// TODO handle error
+			p.sendError("parser: (command state) unexpected end of input")
+			p.Consume()
 			return nil
 		}
 		return paramState
 	} else if r == '\n' {
 		return endState
 	}
-	// TODO handle error
-	return nil
+
+	p.sendError("parser: (command state) expected ' ' or LF but got '" + string(r) + "'")
+	return errorState
 }
 
 func paramState(p *Parser) StateFn {
 	p.Consume()
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (param state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r == ':' {
 		p.Rewind()
 		return trailState
 	}
 	if !isParamRune(r) {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (param state) invalid parameter character '" + string(r) + "'")
+		return errorState
 	}
+
 	p.msg.Params = append(p.msg.Params, parseUntil(p, isParamMiddleRune))
 	r, ok = p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (param state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r == ' ' {
 		if !skipSpaces(p) {
-			// TODO handle error
+			p.sendError("parser: (param state) unexpected end of input")
+			p.Consume()
 			return nil
 		}
 		return paramState
@@ -360,44 +411,66 @@ func paramState(p *Parser) StateFn {
 	if r != '\x0D' { // CR
 		return trailState
 	}
+
 	return endState
 }
 
 func trailState(p *Parser) StateFn {
 	r, ok := p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (trail state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r != ':' {
-		// TODO handle error
-		return nil
+		p.sendError("parser: (trail state) expected ':' but got '" + string(r) + "'")
+		return errorState
 	}
+
 	p.Consume()
 	p.msg.Params = append(p.msg.Params, parseUntil(p, isTrailingParamRune))
+
 	r, ok = p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (trail state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r != '\x0D' { // CR
-		// TODO handle error
-		return nil
+		p.sendError("parser: (trail state) expected CR but got '" + string(r) + "'")
+		return errorState
 	}
+
 	r, ok = p.Next()
 	if !ok {
-		// TODO handle error
+		p.sendError("parser: (trail state) unexpected end of input")
+		p.Consume()
 		return nil
 	}
+
 	if r != '\x0A' { // LF
-		// TODO handle error
-		return nil
+		p.sendError("parser: (trail state) expected LF but got '" + string(r) + "'")
+		return errorState
 	}
+
 	return endState
 }
 
 func endState(p *Parser) StateFn {
 	p.cout <- p.msg
+	return beginState
+}
+
+func errorState(p *Parser) StateFn {
+	parseUntil(p, func(r rune) bool {
+		return r != '\r'
+	})
+	parseUntil(p, func(r rune) bool {
+		return r != '\n'
+	})
+	p.Consume()
 	return beginState
 }
 

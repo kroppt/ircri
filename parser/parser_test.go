@@ -2,6 +2,7 @@ package parser
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,76 +19,76 @@ type basicExpect struct {
 func testParserExpect(t *testing.T, tests []basicExpect) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			in, out := make(chan []rune, 1), make(chan Message, 1)
-			p := NewParser(in, out)
+			in, out, err := make(chan []rune, 1), make(chan Message, 1), make(chan Error, 1)
+			p := NewParser(in, out, err)
 			in <- []rune(test.input)
 			cancel := make(chan struct{})
-			done := make(chan struct{})
-			go func() {
-				p.Run(cancel)
-				done <- struct{}{}
-			}()
+			go p.Run(cancel)
 			defer func() {
+				cancel <- struct{}{}
 				close(cancel)
-				close(done)
 				close(in)
 				close(out)
+				close(err)
 			}()
-			select {
-			case <-done:
-			case <-time.After(timeout):
-				t.Error("timed out after 1 second\n")
-				return
-			}
 			select {
 			case msg, ok := <-out:
 				if !ok {
 					t.Error("message channel closed unexpectedly\n")
 				} else if !reflect.DeepEqual(msg, test.expect) {
-					t.Errorf("expected %v to equal %v\n", msg, test.expect)
+					t.Errorf("expected message %v to equal %v\n", msg, test.expect)
 				}
-			default:
-				t.Error("expected parsed message but got failure\n")
+			case e, ok := <-err:
+				if !ok {
+					t.Error("error channel closed unexpectedly\n")
+				} else {
+					t.Errorf("expected parsed message but got error %v\n", e)
+				}
+			case <-time.After(timeout):
+				t.Errorf("timed out after %v\n", time.Duration(timeout))
+				return
 			}
 		})
 	}
 }
 
 type failExpect struct {
-	name  string
-	input string
+	name   string
+	input  string
+	expect string
 }
 
 func testParserFails(t *testing.T, tests []failExpect) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			in, out := make(chan []rune, 1), make(chan Message, 1)
-			p := NewParser(in, out)
+			in, out, err := make(chan []rune, 1), make(chan Message, 1), make(chan Error, 1)
+			p := NewParser(in, out, err)
 			in <- []rune(test.input)
 			cancel := make(chan struct{})
-			done := make(chan struct{})
-			go func() {
-				p.Run(cancel)
-				done <- struct{}{}
-			}()
+			go p.Run(cancel)
 			defer func() {
+				cancel <- struct{}{}
 				close(cancel)
-				close(done)
 				close(in)
 				close(out)
+				close(err)
 			}()
 			select {
-			case <-done:
-			case <-time.After(timeout):
-				t.Error("timed out after 1 second\n")
-				return
-			}
-			select {
 			case msg, ok := <-out:
-				if ok {
+				if !ok {
+					t.Error("message channel closed unexpectedly\n")
+				} else {
 					t.Errorf("expected parse failure but got %v\n", msg)
 				}
-			default:
+			case e, ok := <-err:
+				if !ok {
+					t.Error("error channel closed unexpectedly\n")
+				} else if !strings.Contains(e.Message, test.expect) {
+					t.Errorf("expected error message \"%v\" to contain \"%v\"\n", e.Message, test.expect)
+				}
+			case <-time.After(timeout):
+				t.Errorf("timed out after %v\n", time.Duration(timeout))
+				return
 			}
 		})
 	}
@@ -222,15 +223,14 @@ func TestParserExamples(t *testing.T) {
 
 func TestParserFailures(t *testing.T) {
 	tests := []failExpect{
-		{"empty input", ""},
-		{"empty message", "\r\n"},
-		{"short numeric command", "12\r\n"},
-		{"long numeric command", "1234\r\n"},
-		{"number-letter command", "12A\r\n"},
-		{"extra tag delim", "@id=123AB; CAP\r\n"},
-		{"end after tags", "@id=123AB\r\n"},
-		{"end after prefix", ":irc.example.com\r\n"},
-		{"trailing space", "CAP \r\n"},
+		{"empty message", "\r\n", "invalid first character"},
+		{"short numeric command", "12\r\n", "expected numeric command of length 3"},
+		{"long numeric command", "1234\r\n", "expected numeric command of length 3"},
+		{"number-letter command", "12A\r\n", "only contain numbers"},
+		{"extra tag delim", "@id=123AB; CAP\r\n", "missing valid character after tag symbol"},
+		{"end after tags", "@id=123AB\r\n", "expected ' ' at end of tags"},
+		{"end after prefix", ":irc.example.com\r\n", "unexpected end of input"},
+		{"trailing space", "CAP \r\n", "invalid parameter character '\r'"},
 	}
 	testParserFails(t, tests)
 }
