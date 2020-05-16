@@ -203,6 +203,20 @@ func TestParserExamples(t *testing.T) {
 		Command: "CMD",
 		Params:  []string{"param1", "param2", "spaced param"},
 	}
+	usernameExample1Msg := Message{
+		Prefix:  Prefix{Name: "dan", Username: "[GG]d", Host: "localhost"},
+		Command: "CAP",
+	}
+	usernameExample2Msg := Message{
+		Prefix:  Prefix{Name: "Jeffrey", Username: "_blumgold", Host: "localhost"},
+		Command: "NICK",
+		Params:  []string{"jeff"},
+	}
+	usernameExample3Msg := Message{
+		Prefix:  Prefix{Name: "harry", Username: "]potter[", Host: "hogwarts"},
+		Command: "NOTICE",
+		Params:  []string{"#gryffindor", "mobilize to fight slytherin"},
+	}
 	tests := []basicExpect{
 		{"tag example 1", "@id=123AB;rose CAP\r\n", tagEx1Msg},
 		{"tag example 2", "@url=;netsplit=tur,ty CAP\r\n", tagEx2Msg},
@@ -217,6 +231,9 @@ func TestParserExamples(t *testing.T) {
 		{"complete example 2", "@id=234AB :dan!d@localhost PRIVMSG #chan :Hey what's up!\r\n", completeEx2Msg},
 		{"complete example 3", "CAP REQ :sasl\r\n", completeEx3Msg},
 		{"complete example 4", "@address1/k1=v1;address2/k2=v2;k3=v3;k4=;k5 :full!nick@address CMD param1 param2 :spaced param\r\n", completeEx4Msg},
+		{"username example 1", ":dan![GG]d@localhost CAP\r\n", usernameExample1Msg},
+		{"username example 2", ":Jeffrey!_blumgold@localhost NICK jeff\r\n", usernameExample2Msg},
+		{"username example 3", ":harry!]potter[@hogwarts NOTICE #gryffindor :mobilize to fight slytherin\r\n", usernameExample3Msg},
 	}
 	testParserExpect(t, tests)
 }
@@ -231,6 +248,9 @@ func TestParserFailures(t *testing.T) {
 		{"end after tags", "@id=123AB\r\n", "expected ' ' at end of tags"},
 		{"end after prefix", ":irc.example.com\r\n", "unexpected end of input"},
 		{"trailing space", "CAP \r\n", "invalid parameter character '\r'"},
+		{"username with space", ":dan!d man@localhost CAP\r\n", "expected '@' but got ' '"},
+		{"username begins with digit", ":dan!9d@localhost CAP\r\n", "invalid first username character '9'"},
+		{"username begins with dash", ":dan!-d@localhost CAP\r\n", "invalid first username character '-'"},
 	}
 	testParserFails(t, tests)
 }

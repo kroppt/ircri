@@ -9,6 +9,7 @@ valuechar   =  <any octet except NUL, BELL, CR, LF, semicolon (`;`) and SPACE>
 vendor      =  hostname
 
 prefix      =  servername / ( nickname [ [ "!" user ] "@" host ] )
+user        =  1*(ALPHA / "[" / "]" / "_") *(ALPHA / DIGIT / "[" / "]" / "-" / "_")
 
 command     =  1*letter / 3digit
 

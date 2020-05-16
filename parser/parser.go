@@ -278,9 +278,13 @@ func prefixState(p *Parser) StateFn {
 	if r == '!' || r == '@' {
 		if r == '!' {
 			p.Consume()
-			p.msg.Prefix.Username = parseUntil(p, func(r rune) bool {
-				return r != '@'
-			})
+			beginUser := parseUntil(p, isUsernameBeginRune)
+			user := parseUntil(p, isUsernameRune)
+			if user != "" && beginUser == "" {
+				p.sendError("parser: (prefix state) invalid first username character '" + string(user[0]) + "'")
+				return errorState
+			}
+			p.msg.Prefix.Username = beginUser + user
 			r, ok = p.Next()
 			if !ok {
 				p.sendError("parser: (prefix state) unexpected end of input")
@@ -526,6 +530,32 @@ func isPrefixNameRune(r rune) bool {
 		return true
 	}
 	return false
+}
+
+func isUsernameBeginRune(r rune) bool {
+	switch {
+	case unicode.IsLetter(r):
+	case r == '[':
+	case r == ']':
+	case r == '_':
+	default:
+		return false
+	}
+	return true
+}
+
+func isUsernameRune(r rune) bool {
+	switch {
+	case unicode.IsLetter(r):
+	case unicode.IsDigit(r):
+	case r == '[':
+	case r == ']':
+	case r == '_':
+	case r == '-':
+	default:
+		return false
+	}
+	return true
 }
 
 func isCommandRuneFunc() func(r rune) bool {
